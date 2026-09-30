@@ -67,17 +67,23 @@ module WEBrick
     # Processes requests on +sock+
 
     def run(sock)
+      @logger.info("processing request...")
       while true
         req = create_request(@config)
+        @logger.info("req")
         res = create_response(@config)
+        @logger.info("res")
         server = self
         begin
           timeout = @config[:RequestTimeout]
+          @logger.info("request timeout: #{timeout}")
           while timeout > 0
             break if sock.to_io.wait_readable(0.5)
             break if @status != :Running
             timeout -= 0.5
+            @logger.info("waiting some more: #{timeout}")
           end
+          @logger.info("out of the loop")
           raise HTTPStatus::EOFError if timeout <= 0 || @status != :Running
           begin
             raise HTTPStatus::EOFError if sock.eof?
@@ -85,20 +91,27 @@ module WEBrick
             raise HTTPStatus::EOFError
           end
 
+          @logger.info("parse request...")
           req.parse(sock)
+          @logger.info("request parsed!")
           res.request_method = req.request_method
           res.request_uri = req.request_uri
           res.request_http_version = req.http_version
           res.keep_alive = req.keep_alive?
           server = lookup_server(req) || self
+          @logger.info("server: #{server}")
           if callback = server[:RequestCallback]
+            @logger.info("callback: #{callback}")
             callback.call(req, res)
+            @logger.info("callback called")
           elsif callback = server[:RequestHandler]
             msg = ":RequestHandler is deprecated, please use :RequestCallback"
             @logger.warn(msg)
             callback.call(req, res)
           end
+          @logger.info("calling service...")
           server.service(req, res)
+          @logger.info("service called!")
         rescue HTTPStatus::EOFError, HTTPStatus::RequestTimeout => ex
           res.set_error(ex)
         rescue HTTPStatus::Error => ex
@@ -110,14 +123,17 @@ module WEBrick
           @logger.error(ex)
           res.set_error(ex, true)
         ensure
+          @logger.info("sending response...")
           if req.request_line
             if req.keep_alive? && res.keep_alive?
               req.fixup()
             end
             res.send_response(sock)
+            @logger.info("response sent!")
             server.access_log(@config, req, res)
           end
         end
+        @logger.info("keep open -> version:#{@http_version}, keep_alive: #{req.keep_alive?}")
         break if @http_version < "1.1"
         break unless req.keep_alive?
         break unless res.keep_alive?

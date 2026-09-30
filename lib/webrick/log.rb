@@ -149,7 +149,7 @@ module WEBrick
     # Same as BasicLog#log
     def log(level, data)
       tmp = Time.now.strftime(@time_format)
-      tmp << " " << data
+      tmp << " (pid=#{Process.pid} tid=#{Thread.current.object_id}) " << data
       super(level, tmp)
     end
   end

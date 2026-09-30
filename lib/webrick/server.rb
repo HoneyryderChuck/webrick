@@ -180,6 +180,7 @@ module WEBrick
                 svrs[0].each{|svr|
                   @tokens.pop          # blocks while no token is there.
                   if sock = accept_client(svr)
+                    @logger.info("accepting new sock: #{sock}")
                     unless config[:DoNotReverseLookup].nil?
                       sock.do_not_reverse_lookup = !!config[:DoNotReverseLookup]
                     end
@@ -190,6 +191,7 @@ module WEBrick
                     @tokens.push(nil)
                   end
                 }
+                @logger.info("back to listening...")
               end
             rescue Errno::EBADF, Errno::ENOTSOCK, IOError => ex
               # if the listening socket was closed in GenericServer#shutdown,
